@@ -21,35 +21,25 @@ white_threeshold=1400###pixel value above 1400 will be white
 wt=white_threeshold
 bt=black_threeshold
 
-###### function to transform a dicom to RGB for the use of opencv, 
-##to be strongly improved, as it takes to much time to run,
-## and the linear process should be replaced with an adapted weighted arctan or an adapted spline interpolation.
 def DicomtoRGB(dicomfile,bt,wt):
-    """Create new image(numpy array) filled with certain color in RGB"""
-    # Create black blank image
-    image = np.zeros((dicomfile.Rows, dicomfile.Columns, 3), np.uint8)
-    #loops on image height and width
-    i=0
-    j=0
-    while i<dicomfile.Rows:
-        j=0
-        while j<dicomfile.Columns:
-            color = yaxpb(dicom_file.pixel_array[i][j],bt,wt) #linear transformation to be adapted
-            image[i][j] = (color,color,color)## same R,G, B value to obtain greyscale
-            j=j+1
-        i=i+1
-    return image
-##linear transformation : from [bt < pxvalue < wt] linear to [0<pyvalue<255]: loss of information... 
-def yaxpb(pxvalue,bt,wt):
-    if pxvalue < bt:
-        y=0
-    elif pxvalue > wt:
-        y=255
-    else:
-        y=pxvalue*255/(wt-bt)-255*bt/(wt-bt)
-    return y
-    
+    #load the dicom_file as a numpy pixel array
+    img=np.array(dicom_file.pixel_array, np.int16)
+    # enforce boundary conditions
+    clipped_img = np.clip(img,bt,wt)
 
+    # linear transformation
+    # additive
+    rgb_add = clipped_img - bt
+    
+    #multiplicative
+    rgb_mult = np.multiply(rgb_add,255/(wt-bt))
+    
+    # round to nearest int
+    rgb_int = np.around(rgb_mult,0).astype(np.uint8)
+    
+    # stack thrice on the last axis for R G B
+    rgb_img = np.stack([rgb_int]*3,axis=-1)
+    return rgb_img
 
 image=DicomtoRGB(dicom_file,bt=0,wt=1400)
 ## loading the RGB in a proper opencv format
